@@ -224,7 +224,13 @@ class CredentialSetupSession:
                 self._print(f"\n{Colors.YELLOW}Setup interrupted.{Colors.NC}")
                 skipped.append(cred.credential_name)
                 break
-            except Exception as e:
+            except (OSError, ImportError, ValueError, RuntimeError) as e:
+                logger.warning(
+                    "Credential setup failed for %s: %s",
+                    cred.credential_name,
+                    e,
+                    exc_info=True,
+                )
                 errors.append(f"{cred.credential_name}: {e}")
 
         self._print_summary(configured, skipped, errors)
@@ -272,7 +278,8 @@ class CredentialSetupSession:
                 f"{Colors.GREEN}✓ Encryption key saved to ~/.hive/secrets/credential_key{Colors.NC}"
             )
             return True
-        except Exception as e:
+        except (OSError, PermissionError, RuntimeError) as e:
+            logger.warning("Failed to initialize credential store: %s", e, exc_info=True)
             self._print(f"{Colors.RED}Failed to initialize credential store: {e}{Colors.NC}")
             return False
 
@@ -371,7 +378,9 @@ class CredentialSetupSession:
         except (EOFError, OSError) as exc:
             logger.debug("Password input unavailable, falling back to plain input: %s", exc)
             api_key = self._input(f"Paste your {cred.env_var}: ").strip()
-        except Exception:
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except Exception:  # noqa: BLE001 — getpass may raise platform-specific errors
             logger.warning("Unexpected error reading password input", exc_info=True)
             api_key = self._input(f"Paste your {cred.env_var}: ").strip()
 
@@ -412,7 +421,9 @@ class CredentialSetupSession:
             except (EOFError, OSError) as exc:
                 logger.debug("Password input unavailable for ADEN_API_KEY: %s", exc)
                 aden_key = self._input("Paste your ADEN_API_KEY: ").strip()
-            except Exception:
+            except (KeyboardInterrupt, SystemExit):
+                raise
+            except Exception:  # noqa: BLE001 — getpass may raise platform-specific errors
                 logger.warning("Unexpected error reading ADEN_API_KEY input", exc_info=True)
                 aden_key = self._input("Paste your ADEN_API_KEY: ").strip()
 
@@ -445,8 +456,10 @@ class CredentialSetupSession:
                         os.environ[cred.env_var] = value
                 except (KeyError, OSError) as exc:
                     logger.debug("Could not export credential to env: %s", exc)
-                except Exception:
-                    logger.warning("Unexpected error exporting credential to env", exc_info=True)
+                except (TypeError, ValueError) as exc:
+                    logger.warning(
+                        "Unexpected error exporting credential to env: %s", exc, exc_info=True
+                    )
                 return True
             else:
                 self._print(
@@ -454,7 +467,8 @@ class CredentialSetupSession:
                 )
                 self._print("Please connect this integration on https://hive.adenhq.com first.")
                 return False
-        except Exception as e:
+        except (ImportError, OSError, ConnectionError, RuntimeError) as e:
+            logger.warning("Failed to sync from Aden: %s", e, exc_info=True)
             self._print(f"{Colors.RED}Failed to sync from Aden: {e}{Colors.NC}")
             return False
 
@@ -472,7 +486,9 @@ class CredentialSetupSession:
         except ImportError:
             # No health checker available
             return None
-        except Exception:
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except Exception:  # noqa: BLE001 — third-party health checker may raise anything
             logger.warning("Health check failed for %s", cred.credential_name, exc_info=True)
             return None
 
@@ -494,7 +510,8 @@ class CredentialSetupSession:
             )
             store.save_credential(cred_obj)
             self._print(f"{Colors.GREEN}✓ Stored in ~/.hive/credentials/{Colors.NC}")
-        except Exception as e:
+        except (OSError, PermissionError, ValueError, RuntimeError) as e:
+            logger.warning("Could not store credential %s: %s", cred.credential_name, e)
             self._print(f"{Colors.YELLOW}⚠ Could not store in credential store: {e}{Colors.NC}")
 
         # Export to current session
@@ -579,7 +596,9 @@ def _load_nodes_from_python_agent(agent_path: Path) -> list:
     except (ImportError, OSError) as exc:
         logger.debug("Could not load agent module: %s", exc)
         return []
-    except Exception:
+    except (KeyboardInterrupt, SystemExit):
+        raise
+    except Exception:  # noqa: BLE001 — agent module may raise arbitrary errors on import
         logger.warning("Unexpected error loading agent module", exc_info=True)
         return []
 
@@ -610,7 +629,9 @@ def _load_nodes_from_json_agent(agent_json: Path) -> list:
     except (json.JSONDecodeError, KeyError, OSError) as exc:
         logger.debug("Could not load JSON agent: %s", exc)
         return []
-    except Exception:
+    except (KeyboardInterrupt, SystemExit):
+        raise
+    except Exception:  # noqa: BLE001 — NodeSpec constructor may raise on malformed data
         logger.warning("Unexpected error loading JSON agent", exc_info=True)
         return []
 
