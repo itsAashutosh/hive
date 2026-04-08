@@ -212,6 +212,23 @@ class TestEvaluatePhaseCompletion:
         assert verdict.action == "ACCEPT"
         assert verdict.confidence == 0.5
 
+    @pytest.mark.asyncio
+    async def test_llm_failure_lets_interrupt_propagate(self):
+        """KeyboardInterrupt should propagate out."""
+        llm = MockStreamingLLM()
+        llm.complete = MagicMock(side_effect=KeyboardInterrupt)
+
+        conv = NodeConversation(system_prompt="test")
+        with pytest.raises(KeyboardInterrupt):
+            await evaluate_phase_completion(
+                llm=llm,
+                conversation=conv,
+                phase_name="Test",
+                phase_description="Test phase",
+                success_criteria="Do the thing",
+                accumulator_state={},
+            )
+
 
 # ===========================================================================
 # Integration: Level 2 in EventLoopNode implicit judge

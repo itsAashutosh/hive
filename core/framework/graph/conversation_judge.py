@@ -96,8 +96,10 @@ FEEDBACK: (reason if RETRY, empty if ACCEPT)"""
             logger.debug("Level 2 judge: empty response, accepting by default")
             return PhaseVerdict(action="ACCEPT", confidence=0.5, feedback="")
         return _parse_verdict(response.content)
+    except (KeyboardInterrupt, SystemExit):
+        raise
     except Exception as e:
-        logger.warning(f"Level 2 judge failed, accepting by default: {e}")
+        logger.warning("Level 2 judge failed, accepting by default: %s", e)
         # On failure, don't block — Level 0 already passed
         return PhaseVerdict(action="ACCEPT", confidence=0.5, feedback="")
 
