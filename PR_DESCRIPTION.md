@@ -14,4 +14,6 @@ This PR refactors `OutputValidator._contains_code_indicators` to mitigate aggres
 
 ### Validation
 - Validated via `uv run pytest tests/test_validator_code_indicators.py` verifying full regression survival and 100% test passing ratios.
-- Addressed Issue #[Insert Issue ID Here]
+
+### Related Issue
+- Closes #1 (OutputValidator false-positive code blocking on natural language)
