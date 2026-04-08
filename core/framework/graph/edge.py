@@ -196,11 +196,14 @@ class EdgeSpec(BaseModel):
                 result,
                 expr_vars or "none matched",
             )
-            return result
-        except Exception as e:
-            logger.warning(f"      ⚠ Condition evaluation failed: {self.condition_expr}")
-            logger.warning(f"         Error: {e}")
-            logger.warning(f"         Available context keys: {list(context.keys())}")
+        except (SyntaxError, ValueError, TypeError, NameError, AttributeError, KeyError, IndexError, TimeoutError) as e:
+            logger.error(
+                "      ⚠ Condition evaluation failed for edge %s: '%s' -> %s",
+                self.id,
+                self.condition_expr,
+                e,
+            )
+            logger.debug("         Available context keys: %s", list(context.keys()))
             return False
 
     async def _llm_decide(
