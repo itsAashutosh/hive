@@ -225,8 +225,8 @@ class CheckpointStore:
                 created = datetime.fromisoformat(cp.created_at)
                 if created < cutoff:
                     old_checkpoints.append(cp.checkpoint_id)
-            except Exception as e:
-                logger.warning(f"Failed to parse timestamp for {cp.checkpoint_id}: {e}")
+            except (ValueError, TypeError) as e:
+                logger.warning("Failed to parse timestamp for %s: %s", cp.checkpoint_id, e)
 
         # Delete old checkpoints
         deleted_count = 0
@@ -235,7 +235,7 @@ class CheckpointStore:
                 deleted_count += 1
 
         if deleted_count > 0:
-            logger.info(f"Pruned {deleted_count} checkpoints older than {max_age_days} days")
+            logger.info("Pruned %d checkpoints older than %d days", deleted_count, max_age_days)
 
         return deleted_count
 
